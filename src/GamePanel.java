@@ -4,30 +4,34 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
 
 public class GamePanel extends JPanel implements ActionListener {
 
     static final int SCREEN_WIDTH = 700;
     static final int SCREEN_HEIGHT = 700;
-    static final int UNIT_SIZE = 35; // 28 lub 35
-    static final int GAME_UNITS = (SCREEN_WIDTH * SCREEN_HEIGHT) / UNIT_SIZE;
-    static final int DELAY = 40;
-    final int[] x = new int[GAME_UNITS];
-    final int[] y = new int[GAME_UNITS];
+    static final int UNITS = 20;
+    static final int UNIT_SIZE = SCREEN_HEIGHT / UNITS;
+    static final int DELAY = 30;
     int bodyParts = 6;
+    List<Pair<Integer, Integer>> coords = new ArrayList<>();
     int applesEaten = 0;
     int appleX;
     int appleY;
     char direction = 'R';
     boolean running = false;
-    boolean showGrid = false;
     boolean gay = false;
     boolean przechodzenie = true;
     Timer timer;
     Random random;
 
     GamePanel() {
+        for (int i = 0; i < bodyParts; i++) {
+            coords.add(new Pair<>(bodyParts - i, UNITS / 2));
+        }
+
         random = new Random();
         this.setPreferredSize(new Dimension(SCREEN_WIDTH, SCREEN_HEIGHT));
         this.setBackground(Color.black);
@@ -49,51 +53,38 @@ public class GamePanel extends JPanel implements ActionListener {
     }
 
     public void draw(Graphics g) {
-
-        if(running) {
-            if(showGrid) {
-                for(int i = 0; i < SCREEN_HEIGHT / UNIT_SIZE; i++) {
-                    g.drawLine(i * UNIT_SIZE, 0, i * UNIT_SIZE, SCREEN_HEIGHT);
-                }
-                for(int i = 0; i < SCREEN_WIDTH / UNIT_SIZE; i++) {
-                    g.drawLine(0, i * UNIT_SIZE, SCREEN_WIDTH, i * UNIT_SIZE);
-                }
-            }
-
-            g.setColor(Color.red);
-            g.fillOval(appleX, appleY, UNIT_SIZE, UNIT_SIZE);
-
-            for(int i = 0; i < bodyParts; i++) {
-                if(i == 0) {
-                    g.setColor(Color.green);
-                    g.fillRect(x[i], y[i], UNIT_SIZE, UNIT_SIZE);
-                }
-                else {
-                    g.setColor(new Color(45, 180, 0));
-                    if(gay)
-                        g.setColor(new Color(random.nextInt(255), random.nextInt(255), random.nextInt(255)));
-                    g.fillRect(x[i], y[i], UNIT_SIZE, UNIT_SIZE);
-                }
-            }
-
-            g.setColor(Color.white);
-            g.setFont(new Font("Arial", Font.BOLD, 40));
-            FontMetrics metrics = getFontMetrics(g.getFont());
-            g.drawString("Score: " + applesEaten, (SCREEN_WIDTH - metrics.stringWidth("Score: " + applesEaten)) / 2, g.getFont().getSize());
-        }
-        else
+        if (!running) {
             gameOver(g);
+            return;
+        }
 
+        g.setColor(Color.red);
+        g.fillOval(appleX * UNIT_SIZE, appleY * UNIT_SIZE, UNIT_SIZE, UNIT_SIZE);
+
+        g.setColor(Color.green);
+        g.fillRect(coords.get(0).getX() * UNIT_SIZE, coords.get(0).getY() * UNIT_SIZE, UNIT_SIZE, UNIT_SIZE);
+        for (int i = 1; i < bodyParts; i++) {
+            if (gay)
+                g.setColor(new Color(random.nextInt(255), random.nextInt(255), random.nextInt(255)));
+            else
+                g.setColor(new Color(45, 180, 0));
+            g.fillRect(coords.get(i).getX() * UNIT_SIZE, coords.get(i).getY() * UNIT_SIZE, UNIT_SIZE, UNIT_SIZE);
+        }
+
+        g.setColor(Color.white);
+        g.setFont(new Font("Arial", Font.BOLD, 40));
+        FontMetrics metrics = getFontMetrics(g.getFont());
+        g.drawString("Score: " + applesEaten, (SCREEN_WIDTH - metrics.stringWidth("Score: " + applesEaten)) / 2, g.getFont().getSize());
     }
 
     public void newApple() {
         boolean good;
         do {
             good = false;
-            appleX = random.nextInt((SCREEN_WIDTH / UNIT_SIZE)) * UNIT_SIZE;
-            appleY = random.nextInt((SCREEN_HEIGHT / UNIT_SIZE)) * UNIT_SIZE;
+            appleX = random.nextInt(UNITS);
+            appleY = random.nextInt(UNITS);
             for (int i = 0; i < bodyParts; i++) {
-                if (appleX == x[i] && appleY == y[i]) {
+                if (appleX == coords.get(i).getX() && appleY == coords.get(i).getY()) {
                     good = true;
                     break;
                 }
@@ -102,66 +93,65 @@ public class GamePanel extends JPanel implements ActionListener {
     }
 
     public void move() {
-        for(int i = bodyParts; i > 0; i--) {
-            x[i] = x[i - 1];
-            y[i] = y[i - 1];
+        for (int i = bodyParts - 1; i > 0; i--) {
+            coords.get(i).setX(coords.get(i - 1).getX());
+            coords.get(i).setY(coords.get(i - 1).getY());
         }
 
         switch (direction) {
-            case 'U' -> y[0] = y[0] - UNIT_SIZE;
-            case 'D' -> y[0] = y[0] + UNIT_SIZE;
-            case 'L' -> x[0] = x[0] - UNIT_SIZE;
-            case 'R' -> x[0] = x[0] + UNIT_SIZE;
-        }
-    }
-
-    public void checkApple() {
-        if((x[0] == appleX) && (y[0] == appleY)) {
-            bodyParts++;
-            applesEaten++;
-            newApple();
+            case 'U' -> coords.get(0).setY(coords.get(0).getY() - 1);
+            case 'D' -> coords.get(0).setY(coords.get(0).getY() + 1);
+            case 'L' -> coords.get(0).setX(coords.get(0).getX() - 1);
+            case 'R' -> coords.get(0).setX(coords.get(0).getX() + 1);
         }
     }
 
     public void checkCollisions() {
         // cialo
-        for(int i = 2; i < bodyParts; i++) {
-            if((x[0] == x[i]) && (y[0] == y[i])) {
+        for (int i = 2; i < bodyParts; i++) {
+            if ((coords.get(0).getX() == coords.get(i).getX()) && (coords.get(0).getY() == coords.get(i).getY())) {
                 running = false;
                 break;
             }
         }
 
-        if(!przechodzenie) {
-            // lewo
-            if(x[0] < 0)
-                running = false;
-            // prawo
-            if(x[0] >= SCREEN_WIDTH)
-                running = false;
-            // gora
-            if(y[0] < 0)
-                running = false;
-            // dol
-            if(y[0] >= SCREEN_HEIGHT)
-                running = false;
-        }
-        else {
-            // lewo
-            if(x[0] < 0)
-                x[0] = SCREEN_WIDTH;
-            // prawo
-            if(x[0] >= SCREEN_WIDTH)
-                x[0] = 0;
-            // gora
-            if(y[0] < 0)
-                y[0] = SCREEN_HEIGHT;
-            // dol
-            if(y[0] >= SCREEN_HEIGHT)
-                y[0] = 0;
+        // jablko
+        if ((coords.get(0).getX() == appleX) && (coords.get(0).getY() == appleY)) {
+            newApple();
+            coords.add(new Pair<>(coords.get(bodyParts-1).getX(), coords.get(bodyParts-1).getY()));
+            bodyParts++;
+            applesEaten++;
         }
 
-        if(!running)
+        if (!przechodzenie) {
+            // lewo
+            if (coords.get(0).getX() < 0)
+                running = false;
+                // prawo
+            else if (coords.get(0).getX() >= UNITS)
+                running = false;
+                // gora
+            else if (coords.get(0).getY() < 0)
+                running = false;
+                // dol
+            else if (coords.get(0).getY() >= UNITS)
+                running = false;
+        } else {
+            // lewo
+            if (coords.get(0).getX() < 0)
+                coords.get(0).setX(UNITS);
+                // prawo
+            else if (coords.get(0).getX() >= UNITS)
+                coords.get(0).setX(0);
+                // gora
+            else if (coords.get(0).getY() < 0)
+                coords.get(0).setY(UNITS);
+                // dol
+            else if (coords.get(0).getY() >= UNITS)
+                coords.get(0).setY(0);
+        }
+
+        if (!running)
             timer.stop();
     }
 
@@ -181,16 +171,14 @@ public class GamePanel extends JPanel implements ActionListener {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        if(running) {
+        if (running) {
+            repaint();
             move();
-            checkApple();
             checkCollisions();
         }
-        repaint();
     }
 
     public class MyKeyAdapter extends KeyAdapter {
-
         @Override
         public void keyPressed(KeyEvent e) {
             switch (e.getKeyCode()) {
